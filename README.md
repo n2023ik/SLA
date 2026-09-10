@@ -568,15 +568,15 @@ Build the database schema, backend APIs, frontend pages, seed data, and initial 
 
 Keep the diagnosis rules modular so they can be changed later.
 
-This project was built with [Lovable](https://lovable.dev).
+This project was built with .
 
-## Build with Lovable
+## Build with 
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/1e7bfc68-bec0-4c17-b961-a8f12d4c80fd).
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+
+- **Ship faster**: describe what you want to build and  handles the code.
+- **Stay in sync**: every change made in is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into  ready for your next prompt.
 
 ## Development
 
