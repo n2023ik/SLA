@@ -1,0 +1,300 @@
+{
+  "version": 1,
+  "sdk_version": "2.0.4",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://oolcakurdtoizgejjhpb.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "sla-guardian",
+      "version": "0.1.0",
+      "title": "SLA Guardian"
+    },
+    "tools": [
+      {
+        "name": "sla_overview",
+        "title": "SLA overview",
+        "description": "Current SLA performance: order counts, completed adherence, live on-track/at-risk/breached counts and the top systemic findings.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "description": "How many days of history to include (1-90). Defaults to 7."
+            }
+          },
+          "required": [
+            "days"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_delayed_orders",
+        "title": "List delayed orders",
+        "description": "Delayed orders with their primary diagnosis (stage, root cause, confidence, recommended action). Optionally filter by stage or zone.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "description": "Days of history to scan (1-90). Defaults to 7."
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "PICK_START",
+                "PICKING",
+                "PACKING",
+                "DISPATCH",
+                "DELIVERY"
+              ],
+              "description": "Only return diagnoses for this stage."
+            },
+            "zoneId": {
+              "type": "string",
+              "description": "Only return diagnoses for this zone id."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (1-100). Defaults to 25."
+            }
+          },
+          "required": [
+            "days",
+            "limit"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_order_diagnosis",
+        "title": "Get order diagnosis",
+        "description": "Full detail for one order: event timeline, event-derived stage durations, stage overruns and every diagnosis with its evidence.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "orderId": {
+              "type": "string",
+              "description": "The order id, e.g. ORD-000123."
+            }
+          },
+          "required": [
+            "orderId"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_bottlenecks",
+        "title": "List bottlenecks",
+        "description": "Recurring and aggregate bottlenecks: by zone, hour, shift, packing station and recurring zone/stage/hour signatures with affected orders and distinct days.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "description": "Days of history to scan (1-90). Defaults to 30."
+            }
+          },
+          "required": [
+            "days"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "workforce_outliers",
+        "title": "Workforce performance deviations",
+        "description": "Employees whose stage times deviate from comparable peers (same role, shift, zone and similar workload). Reports observed performance deviations, never judgements about people.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "description": "Days of history to scan (1-90). Defaults to 14."
+            },
+            "role": {
+              "type": "string",
+              "enum": [
+                "PICKER",
+                "PACKER",
+                "RIDER"
+              ],
+              "description": "Only include this role."
+            }
+          },
+          "required": [
+            "days"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_interventions",
+        "title": "List interventions",
+        "description": "Recorded operator interventions with their recommendation, before/after measurements, improvement and outcome. Only real recorded measurements are returned.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "IMPROVED",
+                "NO_CHANGE",
+                "WORSENED",
+                "RESOLVED",
+                "NOT_APPLICABLE"
+              ],
+              "description": "Only interventions with this outcome."
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "PICK_START",
+                "PICKING",
+                "PACKING",
+                "DISPATCH",
+                "DELIVERY"
+              ],
+              "description": "Only interventions for this stage."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (1-100). Defaults to 25."
+            }
+          },
+          "required": [
+            "limit"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "record_intervention",
+        "title": "Record an intervention",
+        "description": "Record that an operator took an action on a recommendation. Only call this when a real action was taken; the outcome and after-measurement stay empty until they are actually measured.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "recommendation": {
+              "type": "string",
+              "description": "The recommendation this action responds to."
+            },
+            "actionTaken": {
+              "type": "string",
+              "description": "What was actually done."
+            },
+            "actionAt": {
+              "type": "string",
+              "description": "ISO timestamp of the action. Defaults to now."
+            },
+            "signature": {
+              "type": "string",
+              "description": "Recommendation signature, e.g. Z3|PICKING|19, when known."
+            },
+            "orderId": {
+              "type": "string",
+              "description": "Related order id, if the action targeted one order."
+            },
+            "zoneId": {
+              "type": "string",
+              "description": "Affected zone id."
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "PICK_START",
+                "PICKING",
+                "PACKING",
+                "DISPATCH",
+                "DELIVERY"
+              ],
+              "description": "Affected stage."
+            },
+            "rootCause": {
+              "type": "string",
+              "description": "Root cause this action addresses."
+            },
+            "metric": {
+              "type": "string",
+              "enum": [
+                "SLA_ADHERENCE_PCT",
+                "STAGE_MINUTES"
+              ],
+              "description": "Measurement unit: SLA adherence percent, or stage minutes where lower is better."
+            },
+            "beforeSla": {
+              "type": "number",
+              "description": "Baseline measurement before the action. Immutable once recorded."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Extra context."
+            }
+          },
+          "required": [
+            "recommendation",
+            "actionTaken"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

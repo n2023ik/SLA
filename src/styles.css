@@ -1,0 +1,130 @@
+@import "tailwindcss" source(none);
+@import "tw-animate-css";
+@source "../src";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Operations-control design system.
+ * Dark, high-contrast console palette: slate base, signal cyan for primary,
+ * and dedicated ok / warn / danger signal colors for SLA states.
+ */
+
+@theme inline {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-ok-foreground: var(--ok-foreground);
+  --color-warn: var(--warn);
+  --color-warn-foreground: var(--warn-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+:root {
+  --radius: 0.5rem;
+  --background: oklch(0.17 0.017 253);
+  --foreground: oklch(0.95 0.006 253);
+  --surface: oklch(0.2 0.018 253);
+  --card: oklch(0.215 0.019 253);
+  --card-foreground: oklch(0.95 0.006 253);
+  --popover: oklch(0.215 0.019 253);
+  --popover-foreground: oklch(0.95 0.006 253);
+  --primary: oklch(0.76 0.13 199);
+  --primary-foreground: oklch(0.18 0.03 240);
+  --secondary: oklch(0.27 0.02 253);
+  --secondary-foreground: oklch(0.94 0.006 253);
+  --muted: oklch(0.26 0.017 253);
+  --muted-foreground: oklch(0.7 0.017 253);
+  --accent: oklch(0.3 0.03 220);
+  --accent-foreground: oklch(0.96 0.006 253);
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: oklch(0.98 0.006 253);
+  --border: oklch(0.31 0.018 253);
+  --input: oklch(0.3 0.018 253);
+  --ring: oklch(0.6 0.1 199);
+
+  --ok: oklch(0.74 0.15 158);
+  --ok-foreground: oklch(0.18 0.03 160);
+  --warn: oklch(0.81 0.16 78);
+  --warn-foreground: oklch(0.2 0.04 70);
+  --danger: oklch(0.63 0.21 22);
+  --danger-foreground: oklch(0.98 0.01 20);
+  --info: oklch(0.74 0.11 250);
+
+  --chart-1: oklch(0.76 0.13 199);
+  --chart-2: oklch(0.81 0.16 78);
+  --chart-3: oklch(0.63 0.21 22);
+  --chart-4: oklch(0.74 0.15 158);
+  --chart-5: oklch(0.72 0.13 285);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+}
+
+@utility panel {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+@utility grid-bg {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 3%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 3%) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+@utility num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}

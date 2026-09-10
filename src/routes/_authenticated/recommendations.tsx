@@ -1,0 +1,285 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+
+import { AppShell } from "@/components/ops/AppShell";
+import { InterventionForm, type RecommendationOption } from "@/components/ops/InterventionForm";
+import { EmptyState, KpiCard, Panel, StatusPill } from "@/components/ops/primitives";
+import { ABSOLUTE_CHANGE_LABEL, METRIC_LABEL } from "@/lib/interventions";
+import { persistDiagnoses } from "@/lib/ops.functions";
+import { interventionsQuery, snapshotQuery } from "@/lib/queries";
+
+export const Route = createFileRoute("/_authenticated/recommendations")({
+  head: () => ({
+    meta: [
+      { title: "Recommendations — SLA Control" },
+      {
+        name: "description",
+        content:
+          "Corrective actions ranked by impact: reallocate pickers, add peak-hour capacity, open packing stations, reassign riders, investigate inventory.",
+      },
+      { property: "og:title", content: "Recommendations — SLA Control" },
+      {
+        property: "og:description",
+        content: "Ranked corrective actions derived from the diagnosis engine.",
+      },
+    ],
+  }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(snapshotQuery(30)),
+  component: RecommendationsPage,
+});
+
+function RecommendationsPage() {
+  const { data } = useSuspenseQuery(snapshotQuery(30));
+  const savePersisted = useServerFn(persistDiagnoses);
+  const [saving, setSaving] = useState(false);
+
+  // Interventions are only ever what an operator explicitly records — nothing here
+  // assumes an action happened.
+  const interventions = useQuery(interventionsQuery());
+
+  const grouped = useMemo(() => {
+    const map = new Map<
+      string,
+      { action: string; category: string; count: number; stages: Set<string>; zones: Set<string> }
+    >();
+    const orderById = new Map(data.orders.map((o) => [o.orderId, o]));
+    for (const d of data.diagnoses) {
+      const entry =
+        map.get(d.recommendedAction) ??
+        {
+          action: d.recommendedAction,
+          category: d.category,
+          count: 0,
+          stages: new Set<string>(),
+          zones: new Set<string>(),
+        };
+      entry.count += 1;
+      entry.stages.add(d.stage);
+      const zone = orderById.get(d.orderId)?.zoneId;
+      if (zone) entry.zones.add(zone);
+      map.set(d.recommendedAction, entry);
+    }
+    return [...map.values()].sort((a, b) => b.count - a.count);
+  }, [data.diagnoses, data.orders]);
+
+  /**
+   * Every option carries the context of the finding it came from, so a recorded
+   * intervention keeps its link back to the recommendation and its evidence.
+   */
+  const options = useMemo<RecommendationOption[]>(() => {
+    const rootCauseForKind: Record<string, string> = {
+      ZONE: "ZONE_CONGESTION",
+      TIME: "MANPOWER",
+      MANPOWER: "MANPOWER",
+      STATION: "PACKING_STATION",
+      EMPLOYEE: "INDIVIDUAL_ANOMALY",
+    };
+    const structural = data.systemic.map((f) => {
+      const [, keyPart = ""] = f.key.split("|");
+      const hourValue = f.kind === "TIME" ? Number(keyPart) : NaN;
+      const recurring = data.bottlenecks.topRecurring.find(
+        (r) => f.kind === "ZONE" && r.zoneId === keyPart,
+      );
+      return {
+        label: f.recommendedAction,
+        signature: recurring?.signature ?? f.key,
+        stage: recurring?.stage ?? null,
+        zoneId: f.kind === "ZONE" ? keyPart : (recurring?.zoneId ?? null),
+        hour: Number.isFinite(hourValue) ? hourValue : null,
+        shift: null,
+        rootCause: rootCauseForKind[f.kind] ?? "OTHER",
+        evidence: [f.detail, ...f.evidence],
+      } satisfies RecommendationOption;
+    });
+    const orderLevel = grouped.map((row) => ({
+      label: row.action,
+      signature: null,
+      stage: [...row.stages][0] ?? null,
+      zoneId: [...row.zones].sort()[0] ?? null,
+      hour: null,
+      shift: null,
+      rootCause: row.category,
+      evidence: [
+        `${row.count} orders share this recommended action.`,
+        `Stages: ${[...row.stages].join(", ")} · zones: ${[...row.zones].sort().join(", ")}`,
+      ],
+    }));
+    const seen = new Set<string>();
+    return [...structural, ...orderLevel].filter((o) =>
+      seen.has(o.label) ? false : (seen.add(o.label), true),
+    );
+  }, [data.systemic, data.bottlenecks.topRecurring, grouped]);
+
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const result = await savePersisted({ data: { days: 7 } });
+      toast.success(`Saved ${result.persisted} diagnoses to the operations record`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not save diagnoses");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <AppShell
+      title="Recommendations"
+      subtitle="Corrective actions generated by the diagnosis engine, ranked by how many orders they would have protected."
+      actions={
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+        >
+          {saving ? "Saving…" : "Save findings to record"}
+        </button>
+      }
+    >
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Distinct actions" value={grouped.length} tone="info" />
+        <KpiCard label="Orders covered" value={data.diagnoses.length} tone="warn" />
+        <KpiCard
+          label="Structural findings"
+          value={data.systemic.filter((f) => f.kind !== "EMPLOYEE").length}
+          tone="danger"
+        />
+        <KpiCard
+          label="Coaching / anomaly reviews"
+          value={data.systemic.filter((f) => f.kind === "EMPLOYEE").length}
+        />
+      </div>
+
+      <Panel
+        title="Structural actions"
+        description="Capacity, zone and station changes that address the cause rather than a single order."
+      >
+        {data.systemic.length === 0 ? (
+          <EmptyState message="No structural action needed in this window." />
+        ) : (
+          <ul className="space-y-3">
+            {data.systemic.map((finding) => (
+              <li
+                key={finding.title}
+                className="rounded-md border border-border bg-surface p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">{finding.title}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{finding.detail}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusPill status={finding.severity} />
+                    <span className="rounded border border-border px-2 py-0.5 text-xs text-muted-foreground">
+                      {finding.kind}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-3 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+                  → {finding.recommendedAction}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <Panel
+        title="Order-level actions"
+        description="Grouped by recommended action, with the number of affected orders."
+      >
+        {grouped.length === 0 ? (
+          <EmptyState message="No corrective action outstanding." />
+        ) : (
+          <ul className="grid gap-3 md:grid-cols-2">
+            {grouped.map((row) => (
+              <li key={row.action} className="rounded-md border border-border bg-surface p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium">{row.action}</p>
+                  <span className="num shrink-0 rounded-md border border-warn/40 bg-warn/12 px-2 py-0.5 text-xs text-warn">
+                    {row.count} orders
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {row.category.replace(/_/g, " ")} · stages {[...row.stages].join(", ")} · zones{" "}
+                  {[...row.zones].sort().join(", ")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+
+      <Panel
+        title="Record an intervention"
+        description="An intervention exists only when an operator records it here. Before/after measurements are entered manually, carry their unit, and no improvement is shown until both are present."
+      >
+        <InterventionForm options={options} />
+      </Panel>
+
+      <Panel
+        title="Recommendations with recorded actions"
+        description="Each recorded action keeps the recommendation that produced it, so the before/after result stays attached to its evidence."
+      >
+        {interventions.isError ? (
+          <EmptyState message="Sign in to view and record interventions." />
+        ) : (interventions.data?.length ?? 0) === 0 ? (
+          <EmptyState message="No intervention recorded yet — nothing is assumed to have happened." />
+        ) : (
+          <ul className="space-y-3">
+            {interventions.data!.slice(0, 10).map((i) => {
+              const evidence = options.find((o) => o.label === i.recommendation)?.evidence ?? [];
+              return (
+                <li key={i.id} className="rounded-md border border-border bg-surface p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">{i.recommendation}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {i.stage ? i.stage.replace(/_/g, " ") : "—"} · zone {i.zoneId ?? "—"} ·{" "}
+                        {i.shift ?? "any shift"}
+                        {i.hour !== null ? ` · ${String(i.hour).padStart(2, "0")}:00` : ""} ·{" "}
+                        {i.rootCause === "INDIVIDUAL_ANOMALY"
+                          ? "performance pattern requiring investigation"
+                          : (i.rootCause ?? "—").replace(/_/g, " ").toLowerCase()}
+                      </p>
+                    </div>
+                    <StatusPill status={i.outcome === "PENDING" ? "AT_RISK" : i.outcome} />
+                  </div>
+                  <p className="mt-2 text-sm">Action taken: {i.actionTaken}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {METRIC_LABEL[i.metric]} — before{" "}
+                    <span className="num text-foreground">{i.beforeSla ?? "not measured"}</span> ·
+                    after <span className="num text-foreground">{i.afterSla ?? "not measured"}</span>
+                    {i.improvementAbs !== null ? (
+                      <>
+                        {" · "}
+                        {ABSOLUTE_CHANGE_LABEL[i.metric]}{" "}
+                        <span className="num text-foreground">
+                          {i.improvementAbs > 0 ? "+" : ""}
+                          {i.improvementAbs}
+                          {i.metric === "SLA_ADHERENCE_PCT" ? " pp" : " min"}
+                        </span>
+                      </>
+                    ) : null}
+                  </p>
+                  {evidence.length > 0 ? (
+                    <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+                      {evidence.map((line) => (
+                        <li key={line}>· {line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </Panel>
+    </AppShell>
+  );
+}
