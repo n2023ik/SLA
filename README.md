@@ -568,15 +568,15 @@ Build the database schema, backend APIs, frontend pages, seed data, and initial 
 
 Keep the diagnosis rules modular so they can be changed later.
 
-This project was built with .
+This project was built with SLA.
 
-## Build with 
+## Build with SLA
 
 
 
-- **Ship faster**: describe what you want to build and  handles the code.
-- **Stay in sync**: every change made in is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into  ready for your next prompt.
+- **Ship faster**: describe what you want to build and SLA handles the code.
+- **Stay in sync**: every change made in SLA is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into SLA ready for your next prompt.
 
 ## Development
 
